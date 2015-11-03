@@ -84,7 +84,8 @@ function(req, res) {
         Links.create({
           url: uri,
           title: title,
-          base_url: req.headers.origin
+          base_url: req.headers.origin,
+          user_id: 
         })
         .then(function(newLink) {
           res.send(200, newLink);
@@ -118,6 +119,7 @@ app.post('/login',
         console.log('Welcome, ' + username);
         req.session.regenerate(function() {
           req.session.isAuthenticated = true;
+          req.session.user = username;
           res.redirect('/');
         })
 
@@ -128,19 +130,6 @@ app.post('/login',
       }
     });
 
-    // if (username === 'nick' && password === 'hack') {
-      
-    //   req.session.regenerate(function() {
-    //     req.session.isAuthenticated = true;
-    //     res.redirect('/');
-
-    //   });
-
-    // } else {
-      
-    //   res.redirect('/login');
-
-    // }
   });
 
 app.get('/logout',
@@ -178,6 +167,7 @@ app.post('/signup',
           console.log('Welcome new user, ' + username);
           // login this user
           req.session.regenerate(function() {
+            req.session.user = username;
             req.session.isAuthenticated = true;
             res.redirect('/');
           })
