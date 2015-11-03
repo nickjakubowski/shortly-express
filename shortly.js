@@ -112,25 +112,78 @@ app.post('/login',
     var username = req.body.username;
     var password = req.body.password;
 
-    if (username === 'nick' && password === 'hack') {
+    new User({ username: username, password: password}).fetch().then(function(found) {
+      if (found) {
+        //log them in
+        console.log('Welcome, ' + username);
+        req.session.regenerate(function() {
+          req.session.isAuthenticated = true;
+          res.redirect('/');
+        })
+
+      } else {
+
+        console.log('Bad username/password combo. Try again');
+        res.render('login');
+      }
+    });
+
+    // if (username === 'nick' && password === 'hack') {
       
-      req.session.regenerate(function() {
-        req.session.isAuthenticated = true;
-        res.redirect('/');
+    //   req.session.regenerate(function() {
+    //     req.session.isAuthenticated = true;
+    //     res.redirect('/');
 
-      });
+    //   });
 
-    } else {
+    // } else {
       
-      res.redirect('/login');
+    //   res.redirect('/login');
 
-    }
+    // }
   });
 
 app.get('/logout',
   function(req, res) {
     req.session.destroy(function(err) {
       res.redirect('/login');
+    });
+  })
+
+app.get('/signup', 
+  function(req, res) {
+    res.render('signup');
+  })
+
+app.post('/signup',
+  function(req, res) {
+
+    var username = req.body.username;
+    var password = req.body.password;
+
+    // build new model instance of User and see if already exists
+    new User({ username: username}).fetch().then(function(found) {
+      if (found) {
+        // does this password match the database nick's password?
+        console.log('User name exists. Log in with existing credentials');
+        res.redirect('/login');
+
+      } else {
+
+        Users.create({
+          username: username,
+          password: password,
+        })
+        .then(function(newUser) {
+          console.log('Welcome new user, ' + username);
+          // login this user
+          req.session.regenerate(function() {
+            req.session.isAuthenticated = true;
+            res.redirect('/');
+          })
+        });
+
+      }
     });
   })
 
