@@ -13,6 +13,10 @@ var db = Bookshelf.initialize({
   }
 });
 
+db.knex.schema.dropTable('urls');
+db.knex.schema.dropTable('clicks');
+db.knex.schema.dropTable('users');
+
 db.knex.schema.hasTable('urls').then(function(exists) {
   if (!exists) {
     db.knex.schema.createTable('urls', function (link) {

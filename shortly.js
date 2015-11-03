@@ -4,6 +4,7 @@ var partials = require('express-partials');
 var bodyParser = require('body-parser');
 var cookieParser = require('cookie-parser');
 var session = require('express-session');
+var bcrypt = require('bcrypt');
 
 
 var db = require('./app/config');
@@ -102,35 +103,52 @@ app.post('/links', function(req, res) {
 app.get('/login', 
 function(req, res) {
   if (req.session.isAuthenticated) {
+    console.log('you are logged in as ' + req.session.user);
     res.redirect('/');
   }
   res.render('login');
 });
 
-app.post('/login',
-  function(req, res) {
+app.post('/login', function(req, res) {
 
-    var username = req.body.username;
-    var password = req.body.password;
+  var username = req.body.username;
+  var password = req.body.password;
 
-    new User({ username: username, password: password}).fetch().then(function(found) {
-      if (found) {
-        //log them in
-        console.log('Welcome, ' + username);
-        req.session.regenerate(function() {
-          req.session.isAuthenticated = true;
-          req.session.user = username;
-          res.redirect('/');
-        })
+  new User({ username: username}).fetch().then(function(found) {
 
-      } else {
+    if (found) {
 
-        console.log('Bad username/password combo. Try again');
-        res.redirect('/login');
-      }
-    });
+      // HASH CHECK HERE
+      bcrypt.compare(password, found.attributes.password, function(err, valid) {
 
+        if (valid) {
+
+          console.log('after comparing hash, this is the result: ' + valid);
+          req.session.regenerate(function() {
+            req.session.isAuthenticated = true;
+            req.session.user = username;
+            console.log('Welcome back, ' + req.session.user);
+            res.redirect('/');
+          })
+
+        } else {
+          
+          console.log('Bad password/username combo on sign up. Redirected to login.');
+          res.redirect('/login');
+
+        }
+
+      });
+
+    } else {
+
+      console.log('Bad password/username combo on sign up. Redirected to login.');
+      res.redirect('/login');
+
+    }
   });
+
+});
 
 app.get('/logout',
   function(req, res) {
@@ -153,35 +171,52 @@ app.post('/signup',
     // build new model instance of User and see if already exists
     new User({ username: username}).fetch().then(function(found) {
       if (found) {
-        // does this password match the database nick's password?
-        // console.log('User name exists. Log in with existing credentials');
-        // res.redirect('/login');
-        if (password === found.attributes.password) {
-          req.session.regenerate(function() {
-            req.session.isAuthenticated = true;
-            req.session.user = username;
-            res.redirect('/');
-          })
-        } else {
-          console.log('Bad password/username combo on sign up. Redirected to login.');
-          res.redirect('/login');
-        }
+
+        // HASH CHECK HERE
+        bcrypt.compare(password, found.attributes.password, function(err) {
+
+          if (err) {
+
+            console.log('Bad password/username combo on sign up. Redirected to login.');
+            res.redirect('/login');
+
+          } else {
+
+            req.session.regenerate(function() {
+              req.session.isAuthenticated = true;
+              req.session.user = username;
+              console.log('Welcome back, ' + req.session.user);
+              res.redirect('/');
+            })
+
+          }
+        });
 
       } else {
 
-        Users.create({
-          username: username,
-          password: password,
+        bcrypt.hash(password, 10, function(err, hash) {
+
+          if (err) {
+            throw err;
+          } else {
+            console.log('new passwordhash: ' + hash);
+            Users.create({
+              username: username,
+              password: hash,
+            })
+            .then(function(newUser) {
+              console.log('Welcome new user, ' + username);
+              // login this user
+              req.session.regenerate(function() {
+                req.session.user = username;
+                req.session.isAuthenticated = true;
+                console.log('Welcome to Shortly, ' + req.session.user);
+                res.redirect('/');
+              })
+            });
+
+          }
         })
-        .then(function(newUser) {
-          console.log('Welcome new user, ' + username);
-          // login this user
-          req.session.regenerate(function() {
-            req.session.user = username;
-            req.session.isAuthenticated = true;
-            res.redirect('/');
-          })
-        });
 
       }
     });
