@@ -127,12 +127,12 @@ app.post('/login',
     }
   });
 
-// app.get('/logout',
-//   function(req, res) {
-//     req.session.destroy();
-//     req.session.isAuthenticated = false;
-//     res.render('login');
-//   })
+app.get('/logout',
+  function(req, res) {
+    req.session.destroy(function(err) {
+      res.redirect('/login');
+    });
+  })
 
 /************************************************************/
 // Handle the wildcard route last - if all other routes fail
