@@ -30,13 +30,16 @@ app.use(session({
   resave: false
 }));
 
-// SESSION
-// If not the right user, then rediret to login
-// Else, redirect to '/'
+app.get('/', function(req, res) {
 
+  if (!req.session.isAuthenticated) {
+    res.redirect('/login');
+  }
+  res.render('index');
 
-app.get('/',
-function(req, res) {
+});
+
+app.get('/create', function(req, res) {
 
   if (!req.session.isAuthenticated) {
     res.redirect('/login');
@@ -44,26 +47,19 @@ function(req, res) {
   res.render('index');
 });
 
-app.get('/create',
-function(req, res) {
-  if (!req.session.isAuthenticated) {
-    res.redirect('/login');
-  }
-  res.render('index');
-});
+app.get('/links', function(req, res) {
 
-app.get('/links',
-function(req, res) {
   if (!req.session.isAuthenticated) {
     res.redirect('/login');
   }
+
   Links.reset().fetch().then(function(links) {
     res.send(200, links.models);
   });
 });
 
-app.post('/links', 
-function(req, res) {
+app.post('/links', function(req, res) {
+
   var uri = req.body.url;
 
   if (!util.isValidUrl(uri)) {
@@ -72,10 +68,13 @@ function(req, res) {
   }
 
   new Link({ url: uri }).fetch().then(function(found) {
+
     if (found) {
       res.send(200, found.attributes);
     } else {
+
       util.getUrlTitle(uri, function(err, title) {
+
         if (err) {
           console.log('Error reading URL heading: ', err);
           return res.send(404);
@@ -85,11 +84,12 @@ function(req, res) {
           url: uri,
           title: title,
           base_url: req.headers.origin,
-          user_id: 
+          user_id: req.session.user
         })
         .then(function(newLink) {
           res.send(200, newLink);
         });
+
       });
     }
   });
@@ -126,7 +126,7 @@ app.post('/login',
       } else {
 
         console.log('Bad username/password combo. Try again');
-        res.render('login');
+        res.redirect('/login');
       }
     });
 
@@ -154,8 +154,18 @@ app.post('/signup',
     new User({ username: username}).fetch().then(function(found) {
       if (found) {
         // does this password match the database nick's password?
-        console.log('User name exists. Log in with existing credentials');
-        res.redirect('/login');
+        // console.log('User name exists. Log in with existing credentials');
+        // res.redirect('/login');
+        if (password === found.attributes.password) {
+          req.session.regenerate(function() {
+            req.session.isAuthenticated = true;
+            req.session.user = username;
+            res.redirect('/');
+          })
+        } else {
+          console.log('Bad password/username combo on sign up. Redirected to login.');
+          res.redirect('/login');
+        }
 
       } else {
 
