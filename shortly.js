@@ -2,6 +2,7 @@ var express = require('express');
 var util = require('./lib/utility');
 var partials = require('express-partials');
 var bodyParser = require('body-parser');
+var cookieParser = require('cookie-parser');
 var session = require('express-session');
 
 
@@ -22,26 +23,40 @@ app.use(bodyParser.json());
 // Parse forms (signup/login)
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(__dirname + '/public'));
+app.use(cookieParser());
 app.use(session({
-  genid: function(req) {
-    return Math.random() * 5; // use UUIDs for session IDs
-  },
-  secret: 'keyboard cat'
+  secret: 'cookiecookiecookie',
+  saveUninitialized: true,
+  resave: false
 }));
 
+// SESSION
+// If not the right user, then rediret to login
+// Else, redirect to '/'
 
-app.get('/', 
+
+app.get('/',
 function(req, res) {
+
+  if (!req.session.isAuthenticated) {
+    res.redirect('/login');
+  }
   res.render('index');
 });
 
-app.get('/create', 
+app.get('/create',
 function(req, res) {
+  if (!req.session.isAuthenticated) {
+    res.redirect('/login');
+  }
   res.render('index');
 });
 
-app.get('/links', 
+app.get('/links',
 function(req, res) {
+  if (!req.session.isAuthenticated) {
+    res.redirect('/login');
+  }
   Links.reset().fetch().then(function(links) {
     res.send(200, links.models);
   });
@@ -85,12 +100,14 @@ function(req, res) {
 
 app.get('/login', 
 function(req, res) {
+  if (req.session.isAuthenticated) {
+    res.redirect('/');
+  }
   res.render('login');
 });
 
 app.post('/login',
   function(req, res) {
-    //stuff goes here
 
     var username = req.body.username;
     var password = req.body.password;
@@ -98,8 +115,7 @@ app.post('/login',
     if (username === 'nick' && password === 'hack') {
       
       req.session.regenerate(function() {
-
-        req.session.user = username;
+        req.session.isAuthenticated = true;
         res.redirect('/');
 
       });
@@ -110,6 +126,13 @@ app.post('/login',
 
     }
   });
+
+// app.get('/logout',
+//   function(req, res) {
+//     req.session.destroy();
+//     req.session.isAuthenticated = false;
+//     res.render('login');
+//   })
 
 /************************************************************/
 // Handle the wildcard route last - if all other routes fail
