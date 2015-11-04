@@ -5,6 +5,8 @@ var bodyParser = require('body-parser');
 var cookieParser = require('cookie-parser');
 var session = require('express-session');
 var bcrypt = require('bcrypt');
+var passport = require('passport');
+var GitHubStrategy = require('passport-github2').Strategy;
 
 
 var db = require('./app/config');
@@ -16,6 +18,26 @@ var Click = require('./app/models/click');
 
 var app = express();
 
+passport.serializeUser(function(user, done) {
+  done(null, user);
+});
+
+passport.deserializeUser(function(obj, done) {
+  done(null, obj);
+});
+
+passport.use(new GitHubStrategy({
+    clientID: 'INSERTCLIENTIDHERE',
+    clientSecret: 'CLIENTSECRETGOESHERE',
+    callbackURL: "http://localhost:4568/auth/github/callback"
+  },
+  function(accessToken, refreshToken, profile, done) {
+    process.nextTick(function () {
+      return done(null, profile);
+    });
+  }
+));
+
 app.set('views', __dirname + '/views');
 app.set('view engine', 'ejs');
 app.use(partials());
@@ -24,6 +46,8 @@ app.use(bodyParser.json());
 // Parse forms (signup/login)
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(__dirname + '/public'));
+
+
 app.use(cookieParser());
 app.use(session({
   secret: 'cookiecookiecookie',
@@ -46,6 +70,17 @@ app.get('/create', function(req, res) {
     res.redirect('/login');
   }
   res.render('index');
+});
+
+app.get('/auth/github',
+  passport.authenticate('github', { scope: [ 'user:email' ] }),
+  function(req, res){
+});
+
+app.get('/auth/github/callback', 
+  passport.authenticate('github', { failureRedirect: '/login' }),
+  function(req, res) {
+    res.redirect('/');
 });
 
 app.get('/links', function(req, res) {
